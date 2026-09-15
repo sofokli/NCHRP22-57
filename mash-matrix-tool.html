@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MASH Test Matrix Builder — NCHRP 22-57</title>
+<style>
+  :root{
+    --ink:#241c1a;
+    --ink-soft:#5b524d;
+    --paper:#f7f4ee;
+    --paper-raised:#fffdf9;
+    --line:#d9d0c3;
+    --maroon:#500000;
+    --maroon-dark:#360000;
+    --gold:#a97a12;
+    --gold-soft:#f1e2bd;
+    --slate:#5b6068;
+    --ok:#3f7d5c;
+    --ok-soft:#e3efe7;
+    --open:#a6432d;
+    --open-soft:#f6e5df;
+    --radius:5px;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.5;
+  }
+  a{color:var(--maroon);}
+
+  /* ---------- layout shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns: 260px minmax(0,1fr) 320px;
+    min-height:100vh;
+  }
+  @media (max-width: 1080px){
+    .shell{grid-template-columns: 1fr;}
+    .rail-left, .rail-right{position:static !important; height:auto !important; border:none !important;}
+    .rail-left{order:1; border-bottom:1px solid var(--line) !important;}
+    .main{order:2;}
+    .rail-right{order:3; border-top:2px solid var(--maroon-dark) !important;}
+  }
+
+  .rail-left{
+    background:var(--maroon);
+    color:#fbeee8;
+    padding:22px 20px 30px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .rail-left h1{
+    font-family:var(--serif);
+    font-size:19px;
+    line-height:1.3;
+    margin:0 0 3px;
+    color:#fff;
+  }
+  .rail-left .subtitle{
+    font-size:11.5px;
+    letter-spacing:.02em;
+    color:#e4b8ae;
+    margin:0 0 26px;
+  }
+  .stepper{list-style:none;margin:0;padding:0;}
+  .stepper li{
+    position:relative;
+    padding:0 0 26px 26px;
+    font-size:13.5px;
+    color:#dcb3ab;
+  }
+  .stepper li:last-child{padding-bottom:0;}
+  .stepper li::before{
+    content:"";
+    position:absolute; left:5px; top:2px; bottom:-24px;
+    width:1px; background:rgba(255,255,255,.25);
+  }
+  .stepper li:last-child::before{display:none;}
+  .stepper li::after{
+    content:"";
+    position:absolute; left:0; top:1px;
+    width:11px; height:11px; border-radius:50%;
+    background:var(--maroon); border:1.5px solid rgba(255,255,255,.5);
+  }
+  .stepper li.done{color:#f6ded9;}
+  .stepper li.done::after{background:var(--gold); border-color:var(--gold);}
+  .stepper li.active{color:#fff; font-weight:600;}
+  .stepper li.active::after{background:#fff; border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.25);}
+  .stepper .branch-note{
+    display:block; font-weight:400; font-size:11.5px; color:#dcb3ab; margin-top:2px;
+  }
+
+  .rail-left .reset-link{
+    display:inline-block; margin-top:30px; font-size:12px; color:#e4b8ae;
+    text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; font-family:var(--sans);
+  }
+  .rail-left .reset-link:hover{color:#fff;}
+
+  .main{
+    padding:44px 48px 90px;
+    max-width:760px;
+  }
+  @media (max-width:640px){ .main{padding:28px 20px 70px;} }
+
+  .eyebrow{
+    font-size:12px; color:var(--gold); font-weight:600; margin:0 0 6px;
+  }
+  h2.step-title{
+    font-family:var(--serif);
+    font-size:27px;
+    margin:0 0 10px;
+    color:var(--maroon-dark);
+  }
+  .step-lede{
+    color:var(--ink-soft);
+    font-size:14.5px;
+    max-width:60ch;
+    margin:0 0 28px;
+  }
+  .field-block{margin-bottom:22px;}
+  label.field-label{
+    display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--ink);
+  }
+  .hint{font-size:12.5px; color:var(--ink-soft); margin:4px 0 0;}
+
+  input[type=text], input[type=number], textarea, select{
+    width:100%;
+    font-family:var(--sans);
+    font-size:14px;
+    color:var(--ink);
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:9px 11px;
+  }
+  input:focus, textarea:focus, select:focus{
+    outline:2px solid var(--maroon); outline-offset:1px; border-color:var(--maroon);
+  }
+  textarea{resize:vertical; min-height:56px;}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--sans); font-size:13.5px; font-weight:600;
+    padding:10px 18px; border-radius:var(--radius);
+    border:1px solid var(--maroon); cursor:pointer;
+    background:var(--maroon); color:#fff;
+  }
+  .btn:hover{background:var(--maroon-dark);}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .btn.secondary{
+    background:transparent; color:var(--maroon); border:1px solid var(--maroon);
+  }
+  .btn.secondary:hover{background:#fbeee8;}
+  .btn.ghost{
+    background:transparent; color:var(--ink-soft); border:1px solid var(--line);
+  }
+  .btn.ghost:hover{border-color:var(--ink-soft); color:var(--ink);}
+  .btn.small{padding:6px 12px; font-size:12.5px;}
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:26px;}
+
+  fieldset{border:none; padding:0; margin:0;}
+
+  .option-card{
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 16px; margin-bottom:10px; background:var(--paper-raised);
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  .option-card input[type=checkbox]{margin-top:3px; width:16px; height:16px; accent-color:var(--maroon);}
+  .option-card .option-text b{display:block; font-size:14px;}
+  .option-card .option-text span{display:block; font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .tag{
+    display:inline-block; font-size:10.5px; text-transform:none;
+    background:var(--gold-soft); color:#6b4c07; border-radius:3px;
+    padding:1px 7px; margin-left:8px; vertical-align:middle;
+  }
+
+  .fm-group{margin-bottom:26px;}
+  .fm-group > h3{
+    font-family:var(--serif); font-size:16px; margin:0 0 10px; color:var(--maroon-dark);
+    border-bottom:1px solid var(--line); padding-bottom:6px;
+  }
+  .fm-reasoning{margin:8px 0 0 28px;}
+  .fm-reasoning textarea{font-size:13px;}
+
+  .inline-add{
+    display:flex; gap:8px; margin-top:6px; align-items:center; flex-wrap:wrap;
+  }
+  .inline-add input{flex:1; min-width:160px;}
+
+  table.data-table{
+    width:100%; border-collapse:collapse; font-size:13px; margin:10px 0 4px;
+  }
+  table.data-table th, table.data-table td{
+    text-align:left; padding:7px 9px; border-bottom:1px solid var(--line);
+  }
+  table.data-table th{
+    font-size:11.5px; color:var(--ink-soft); font-weight:600; border-bottom:1.5px solid var(--slate);
+  }
+  table.data-table td.mono, table.data-table th.mono{font-family:var(--mono);}
+  table.data-table tr.removed td{color:#a89b8f; text-decoration:line-through;}
+  table.data-table .status-pill{
+    font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px;
+  }
+  .status-pill.retained{background:var(--ok-soft); color:var(--ok);}
+  .status-pill.removed{background:var(--open-soft); color:var(--open);}
+  .status-pill.new{background:var(--gold-soft); color:#6b4c07;}
+
+  .row-remove{background:none; border:none; color:var(--open); cursor:pointer; font-size:12px; padding:2px 4px;}
+
+  .yesno{display:flex; gap:12px; margin-top:4px;}
+  .yesno button{
+    flex:1; padding:16px; border-radius:var(--radius); border:1.5px solid var(--line);
+    background:var(--paper-raised); font-family:var(--sans); font-size:14px; font-weight:600;
+    cursor:pointer; color:var(--ink);
+  }
+  .yesno button:hover{border-color:var(--maroon);}
+  .yesno button.chosen{border-color:var(--maroon); background:#fbeee8; color:var(--maroon-dark);}
+
+  .panel{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-raised);
+    padding:20px 22px; margin-bottom:20px;
+  }
+  .panel h4{margin:0 0 4px; font-family:var(--serif); font-size:16px; color:var(--maroon-dark);}
+  .panel .meta{font-size:12.5px; color:var(--ink-soft); margin-bottom:14px;}
+
+  .loop-progress{
+    font-size:12.5px; color:var(--ink-soft); margin-bottom:4px; font-weight:600;
+  }
+  .match-note{
+    font-size:13px; background:var(--gold-soft); color:#6b4c07; border-radius:var(--radius);
+    padding:10px 12px; margin-top:12px;
+  }
+
+  .empty-note{
+    font-size:13px; color:var(--ink-soft); font-style:italic; padding:10px 0;
+  }
+
+  /* ---------- right ledger rail ---------- */
+  .rail-right{
+    border-left:1px solid var(--line);
+    padding:22px 20px 40px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:#fbf9f4;
+  }
+  .ledger-header{
+    display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px;
+  }
+  .ledger-header h3{
+    font-family:var(--serif); font-size:16px; margin:0; color:var(--maroon-dark);
+  }
+  .ledger-header .rsh-name{font-size:12px; color:var(--ink-soft);}
+
+  .ledger-section{margin-bottom:24px;}
+  .ledger-section h4{
+    font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--slate); margin:0 0 10px; font-weight:700;
+  }
+  .chip{
+    display:inline-block; font-size:12px; background:#eee3d5; color:#5b4a26;
+    padding:3px 9px; border-radius:20px; margin:0 6px 6px 0;
+  }
+
+  .fm-row{
+    display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px dashed var(--line);
+    font-size:12.5px;
+  }
+  .fm-row:last-child{border-bottom:none;}
+  .fm-dot{
+    width:9px; height:9px; border-radius:50%; margin-top:4px; flex:none;
+    background:var(--open);
+  }
+  .fm-dot.covered{background:var(--ok);}
+  .fm-row .fm-text b{display:block; font-weight:600;}
+  .fm-row .fm-text span{color:var(--ink-soft);}
+
+  .ledger-table{width:100%; border-collapse:collapse; font-size:12px;}
+  .ledger-table th, .ledger-table td{padding:5px 6px; text-align:left; border-bottom:1px solid var(--line);}
+  .ledger-table th{font-size:10px; color:var(--slate); text-transform:uppercase; letter-spacing:.04em;}
+  .ledger-table td.mono{font-family:var(--mono); font-weight:600; color:var(--maroon-dark);}
+
+  .coverage-bar{
+    height:7px; border-radius:5px; background:var(--open-soft); overflow:hidden; margin-top:6px;
+  }
+  .coverage-bar > div{height:100%; background:var(--ok);}
+  .coverage-label{font-size:11px; color:var(--ink-soft); margin-top:5px;}
+
+  /* ---------- results / print ---------- */
+  .final-actions{display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 30px;}
+  .final-table-wrap{overflow-x:auto;}
+
+  @media print{
+    .rail-left, .rail-right, .btn-row, .final-actions, .yesno, .row-remove, .inline-add{display:none !important;}
+    .shell{display:block;}
+    .main{max-width:100%; padding:0;}
+    body{background:#fff;}
+    .panel{border:1px solid #999; break-inside:avoid;}
+  }
+
+  ::selection{background:var(--gold-soft);}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- LEFT: brand + stepper -->
+  <nav class="rail-left">
+    <h1>MASH Test Matrix Builder</h1>
+    <p class="subtitle">NCHRP 22-57 · Draft Procedures Tool</p>
+    <ul class="stepper" id="stepper"></ul>
+    <button class="reset-link" id="reset-btn" type="button">Start over</button>
+  </nav>
+
+  <!-- CENTER: active step -->
+  <main class="main" id="main-content"></main>
+
+  <!-- RIGHT: live matrix ledger -->
+  <aside class="rail-right" id="ledger"></aside>
+
+</div>
+
+<script>
+/* ============================================================
+   REFERENCE DATA — from NCHRP 22-57 Draft Procedures, Tables 1-5
+   ============================================================ */
+const FUNCTIONS = [
+  { key:'capture', label:'Capture / Energy Absorption',
+    desc:'Bring the impacting vehicle to a controlled stop or decelerate it in a controlled manner.',
+    examples:'Terminals, crash cushions, resistance gates, TMAs' },
+  { key:'redirective', label:'Redirective',
+    desc:'Contain and redirect the vehicle.',
+    examples:'Longitudinal barriers, terminals and redirective crash cushions (along their length)' },
+  { key:'gating', label:'Gating',
+    desc:'Allow controlled penetration of vehicle beyond the device.',
+    examples:'Gating terminals, gating crash cushions, LCD' },
+  { key:'release', label:'Release / Activation',
+    desc:'Activate or release (breakaway, slip, yield, fracture) and allow the vehicle to pass through.',
+    examples:'Support structures, signs, work zone traffic control devices' }
+];
+
+const FAILURE_LIBRARY = {
+  capture: [
+    { label:'Structural Failure of Main Element', category:'Penetration', example:'Failure of longitudinal members allows the vehicle to penetrate.' },
+    { label:'Override', category:'Penetration', example:'Vehicle vaults over the device.' },
+    { label:'Underride', category:'Penetration', example:'Vehicle rides under and penetrates the device.' },
+    { label:'Structural Failure of Anchorage', category:'Penetration', example:'Anchorage fails and the vehicle is not contained.' },
+    { label:'Rollover / Exceeds Pitch Limit', category:'Vehicle Instability', example:'Vehicle pitches upward, exceeding the allowable pitch angle.' },
+    { label:'OCD Limits Exceeded / Intrusion', category:'Occupant Compartment Deformation', example:'Occupant compartment is compromised on impact.' },
+    { label:'Exceeds RDA Limit', category:'Occupant Impact Severity', example:'Deceleration levels exceed the allowable ridedown acceleration limit.' },
+    { label:'Exceeds OIV Limit', category:'Occupant Impact Severity', example:'Vehicle exceeds the allowable occupant impact velocity limit.' }
+  ],
+  redirective: [
+    { label:'Structural Failure of Main Element(s)', category:'Non-Containment', example:'Rupture of main elements allows the vehicle to penetrate.' },
+    { label:'Structural Failure of Connection', category:'Non-Containment', example:'Failure of a connection causes elements to separate, resulting in loss of containment.' },
+    { label:'Override', category:'Non-Containment', example:'Vehicle climbs over and vaults the device.' },
+    { label:'Underride', category:'Non-Containment', example:'Vehicle rides under and penetrates the device.' },
+    { label:'Structural Failure of Anchorage', category:'Non-Containment', example:'Anchorage fails and the vehicle is not contained.' },
+    { label:'Rollover / Exceeds Pitch Limit', category:'Vehicle Instability', example:'Vehicle climbs the face of the device and rolls over.' },
+    { label:'OCD Limits Exceeded / Intrusion', category:'Occupant Compartment Deformation', example:'Severe occupant compartment deformation on impact.' },
+    { label:'Exceeds RDA Limit', category:'Occupant Impact Severity', example:'Vehicle snags on elements, causing excessive ridedown acceleration.' },
+    { label:'Exceeds OIV Limit', category:'Occupant Impact Severity', example:'Vehicle snags on elements, exceeding the allowable OIV.' }
+  ],
+  gating: [
+    { label:'Rollover / Exceeds Pitch Limit', category:'Vehicle Instability', example:'Vehicle rides up a component and rolls over.' },
+    { label:'OCD Limits Exceeded / Intrusion', category:'Occupant Compartment Deformation', example:'Fractured elements penetrate the occupant compartment.' },
+    { label:'Exceeds RDA Limit', category:'Occupant Impact Severity', example:'Components grab or catch the vehicle, causing abrupt deceleration.' },
+    { label:'Exceeds OIV Limit', category:'Occupant Impact Severity', example:'Vehicle impacts a stiff element, exceeding the allowable OIV.' }
+  ],
+  release: [
+    { label:'Rollover / Exceeds Pitch Limit', category:'Vehicle Instability', example:'Excessive activation force causes the vehicle to spin out and roll over.' },
+    { label:'OCD Limits Exceeded / Intrusion', category:'Occupant Compartment Deformation', example:'Secondary contact with a released element causes excessive deformation.' },
+    { label:'Exceeds RDA Limit', category:'Occupant Impact Severity', example:'Failure to activate causes excessive deceleration.' },
+    { label:'Exceeds OIV Limit', category:'Occupant Impact Severity', example:'Failure to activate causes excessive OIV.' }
+  ]
+};
+
+const VEHICLES = ['1100C','2270P','1500A','10000S','22000T','36000V','36000T','Other / custom'];
+const IMPACT_POINTS = ['Midspan','Quarter-Point','Third-Point','No Offset','Upstream End','Downstream End','CIP (to be determined)'];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const STEPS = ['welcome','functions','failuremodes','existing-decision','existing-loop','design-loop','results'];
+const STEP_LABELS = {
+  'welcome':'Start',
+  'functions':'1. Identify function(s)',
+  'failuremodes':'2. Identify failure modes',
+  'existing-decision':'3. Existing MASH matrix?',
+  'existing-loop':'3a. Screen existing tests',
+  'design-loop':'4. Design new tests',
+  'results':'5. Finalized matrix'
+};
+
+let state = null;
+function freshState(){
+  return {
+    rshName:'',
+    selectedFunctions:[],   // {key,label,custom}
+    failureModes:[],        // {id,functionKey,functionLabel,label,category,reasoning,covered,coveredBy,summary}
+    hasExistingMatrix:null, // true/false
+    existingTests:[],       // {id,label,vehicle,angle,point,functionKey,functionLabel,performs,status,coveredIds:[],notes}
+    newTests:[],            // {letter,vehicle,angle,point,coveredIds:[]}
+    uncovered:[],           // array of failureMode ids, fixed at start of design loop
+    loopIndex:0,
+    step:'welcome'
+  };
+}
+state = freshState();
+
+let idCounter = 1;
+function uid(prefix){ return prefix + (idCounter++); }
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function fmById(id){ return state.failureModes.find(f=>f.id===id); }
+
+function allTestsForMatching(){
+  // unified list of {label, vehicle, angle, point} across retained existing + new tests
+  const existing = state.existingTests.filter(t=>t.status==='Retained')
+    .map(t=>({label:t.label, vehicle:t.vehicle, angle:t.angle, point:t.point}));
+  const news = state.newTests.map(t=>({label:'Test '+t.letter, vehicle:t.vehicle, angle:t.angle, point:t.point}));
+  return existing.concat(news);
+}
+function normalize(s){ return (s||'').toString().trim().toLowerCase(); }
+function findMatchingTest(vehicle, angle, point){
+  const v=normalize(vehicle), a=normalize(angle), p=normalize(point);
+  return allTestsForMatching().find(t => normalize(t.vehicle)===v && normalize(t.angle)===a && normalize(t.point)===p);
+}
+function nextLetter(){
+  const used = state.newTests.map(t=>t.letter);
+  const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for(const l of letters){ if(!used.includes(l)) return l; }
+  return 'T'+(state.newTests.length+1);
+}
+
+function computeUncovered(){
+  state.uncovered = state.failureModes.filter(f=>!f.covered).map(f=>f.id);
+  state.loopIndex = 0;
+}
+
+function goStep(step){ state.step = step; renderAll(); window.scrollTo({top:0, behavior:'instant'}); }
+
+/* Undo the test assignment made for a given failure mode (used by "back" in the design loop). */
+function undoFailureModeAssignment(fmId){
+  const fm = fmById(fmId);
+  if(!fm) return;
+  fm.covered = false;
+  fm.coveredBy = null;
+  fm.summary = '';
+  state.existingTests.forEach(t=>{ t.coveredIds = t.coveredIds.filter(id=>id!==fmId); });
+  state.newTests.forEach(t=>{ t.coveredIds = t.coveredIds.filter(id=>id!==fmId); });
+  // a new test created only for this failure mode no longer has a reason to exist
+  state.newTests = state.newTests.filter(t=>t.coveredIds.length>0);
+}
+
+/* "Back" handler for every screen inside the design loop (mid-loop, complete, or all-covered). */
+function handleDesignLoopBack(){
+  if(state.uncovered.length===0 || state.loopIndex===0){
+    goStep(state.hasExistingMatrix ? 'existing-loop' : 'existing-decision');
+    return;
+  }
+  state.loopIndex -= 1;
+  undoFailureModeAssignment(state.uncovered[state.loopIndex]);
+  renderAll();
+}
+
+/* ============================================================
+   RENDER: STEPPER (left rail)
+   ============================================================ */
+function renderStepper(){
+  const order = ['welcome','functions','failuremodes','existing-decision',
+    state.hasExistingMatrix ? 'existing-loop' : null,
+    'design-loop','results'].filter(Boolean);
+  const idx = order.indexOf(state.step);
+  const el = document.getElementById('stepper');
+  el.innerHTML = order.map((s,i)=>{
+    const cls = i<idx ? 'done' : (i===idx ? 'active' : '');
+    let extra = '';
+    if(s==='existing-decision' && state.hasExistingMatrix!==null){
+      extra = `<span class="branch-note">${state.hasExistingMatrix ? 'Yes — screening existing tests' : 'No — building a new matrix'}</span>`;
+    }
+    return `<li class="${cls}">${STEP_LABELS[s]}${extra}</li>`;
+  }).join('');
+}
+
+/* ============================================================
+   RENDER: LEDGER (right rail)
+   ============================================================ */
+function renderLedger(){
+  const el = document.getElementById('ledger');
+  if(state.step==='welcome'){
+    el.innerHTML = `
+      <div class="ledger-header"><h3>Live matrix</h3></div>
+      <p class="empty-note">Your test matrix will build here as you work through the steps.</p>`;
+    return;
+  }
+
+  const total = state.failureModes.length;
+  const coveredCount = state.failureModes.filter(f=>f.covered).length;
+  const pct = total ? Math.round(100*coveredCount/total) : 0;
+
+  const chips = state.selectedFunctions.map(f=>`<span class="chip">${escapeHtml(f.label)}</span>`).join('') || '<span class="empty-note">None yet</span>';
+
+  const fmRows = state.failureModes.map(f=>`
+    <div class="fm-row">
+      <div class="fm-dot ${f.covered?'covered':''}"></div>
+      <div class="fm-text">
+        <b>${escapeHtml(f.label)}</b>
+        <span>${escapeHtml(f.functionLabel)}${f.covered ? ' · covered by '+escapeHtml(f.coveredBy) : ' · open'}</span>
+      </div>
+    </div>`).join('') || '<p class="empty-note">None yet</p>';
+
+  const removedTests = state.existingTests.filter(t=>t.status==='Removed');
+  const retainedTests = state.existingTests.filter(t=>t.status==='Retained');
+
+  const testRows = retainedTests.map(t=>`
+    <tr><td class="mono">${escapeHtml(t.label)}</td><td>${escapeHtml(t.vehicle)}</td><td>${escapeHtml(t.angle)}°</td><td>${escapeHtml(t.point)}</td></tr>
+  `).join('') + state.newTests.map(t=>`
+    <tr><td class="mono">Test ${t.letter}</td><td>${escapeHtml(t.vehicle)}</td><td>${escapeHtml(t.angle)}°</td><td>${escapeHtml(t.point)}</td></tr>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="ledger-header">
+      <h3>Live matrix</h3>
+      <span class="rsh-name">${escapeHtml(state.rshName || 'Untitled RSH')}</span>
+    </div>
+
+    <div class="ledger-section">
+      <h4>Function(s)</h4>
+      ${chips}
+    </div>
+
+    <div class="ledger-section">
+      <h4>Failure mode coverage</h4>
+      ${total ? `<div class="coverage-bar"><div style="width:${pct}%"></div></div>
+      <div class="coverage-label">${coveredCount} of ${total} covered</div>` : ''}
+      ${fmRows}
+    </div>
+
+    <div class="ledger-section">
+      <h4>Tests in matrix (${retainedTests.length + state.newTests.length})</h4>
+      ${(retainedTests.length + state.newTests.length) ? `
+      <table class="ledger-table">
+        <thead><tr><th>No.</th><th>Vehicle</th><th>Angle</th><th>Point</th></tr></thead>
+        <tbody>${testRows}</tbody>
+      </table>` : '<p class="empty-note">No tests defined yet</p>'}
+      ${removedTests.length ? `<p class="hint" style="margin-top:10px;">${removedTests.length} existing test${removedTests.length>1?'s':''} removed (not applicable)</p>` : ''}
+    </div>
+  `;
+}
+
+function escapeHtml(s){
+  return (s===undefined||s===null?'':String(s))
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ============================================================
+   RENDER: MAIN CONTENT — one function per step
+   ============================================================ */
+function renderMain(){
+  const el = document.getElementById('main-content');
+  const renderers = {
+    'welcome': renderWelcome,
+    'functions': renderFunctions,
+    'failuremodes': renderFailureModes,
+    'existing-decision': renderExistingDecision,
+    'existing-loop': renderExistingLoop,
+    'design-loop': renderDesignLoop,
+    'results': renderResults
+  };
+  el.innerHTML = renderers[state.step]();
+  attachHandlers();
+}
+
+/* ---------- Step: welcome ---------- */
+function renderWelcome(){
+  return `
+    <p class="eyebrow">NCHRP 22-57</p>
+    <h2 class="step-title">Build a MASH crash test matrix</h2>
+    <p class="step-lede">This tool walks through the draft procedures step by step: identify the hardware's
+      function(s) and failure modes, check whether an existing MASH matrix applies, and — where it doesn't —
+      design new tests. It ends with a finalized, documented test matrix you can export.</p>
+
+    <div class="field-block">
+      <label class="field-label" for="rsh-name">Name of the roadside safety hardware (optional)</label>
+      <input type="text" id="rsh-name" placeholder="e.g. Resistance Gate, BIB Terminal…" value="${escapeHtml(state.rshName)}">
+      <p class="hint">Used only to label your session and exports.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btn-start">Begin</button>
+    </div>
+  `;
+}
+
+/* ---------- Step: functions ---------- */
+function renderFunctions(){
+  const predefinedRows = FUNCTIONS.map(f=>{
+    const checked = state.selectedFunctions.some(sf=>sf.key===f.key);
+    return `
+    <label class="option-card">
+      <input type="checkbox" data-fnkey="${f.key}" class="fn-check" ${checked?'checked':''}>
+      <span class="option-text">
+        <b>${f.label}</b>
+        <span>${f.desc}</span>
+        <span>Examples: ${f.examples}</span>
+      </span>
+    </label>`;
+  }).join('');
+
+  const customFns = state.selectedFunctions.filter(f=>f.custom);
+  const customRows = customFns.map(f=>`
+    <div class="option-card">
+      <div class="option-text" style="flex:1">
+        <b>${escapeHtml(f.label)} <span class="tag">custom</span></b>
+      </div>
+      <button class="row-remove" data-remove-fn="${f.key}" type="button">Remove</button>
+    </div>
+  `).join('');
+
+  return `
+    <p class="eyebrow">Step 1</p>
+    <h2 class="step-title">Identify the function(s)</h2>
+    <p class="step-lede">A function describes the intended behavior of the hardware when struck by a vehicle.
+      Select every function that applies — some hardware performs more than one, depending on impact location.</p>
+
+    <fieldset>${predefinedRows}${customRows}</fieldset>
+
+    <div class="field-block" style="margin-top:18px;">
+      <label class="field-label">Add a custom function</label>
+      <div class="inline-add">
+        <input type="text" id="custom-fn-name" placeholder="Function name">
+        <button class="btn secondary small" id="add-custom-fn" type="button">Add function</button>
+      </div>
+      <p class="hint">Use this if the hardware's intended behavior isn't covered by the four predefined functions.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-back-welcome">← Back</button>
+      <button class="btn" id="btn-to-failuremodes" ${state.selectedFunctions.length?'':'disabled'}>Continue to failure modes</button>
+    </div>
+  `;
+}
+
+/* ---------- Step: failure modes ---------- */
+function renderFailureModes(){
+  const groups = state.selectedFunctions.map(fn=>{
+    const library = FAILURE_LIBRARY[fn.key] || [];
+    const libRows = library.map((fm,i)=>{
+      const id = fn.key+'::'+i;
+      const existing = state.failureModes.find(x=>x.libId===id);
+      const checked = !!existing;
+      return `
+      <div>
+        <label class="option-card" style="margin-bottom:4px;">
+          <input type="checkbox" class="fm-check" data-libid="${id}" data-fnkey="${fn.key}" data-fnlabel="${escapeHtml(fn.label)}"
+            data-label="${escapeHtml(fm.label)}" data-category="${escapeHtml(fm.category)}" ${checked?'checked':''}>
+          <span class="option-text">
+            <b>${fm.label} <span class="tag">${fm.category}</span></b>
+            <span>${fm.example}</span>
+          </span>
+        </label>
+        ${checked ? `
+        <div class="fm-reasoning">
+          <textarea placeholder="Reasoning / practical scenario (optional)" data-reasoning-for="${existing.id}">${escapeHtml(existing.reasoning)}</textarea>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+
+    const customFms = state.failureModes.filter(f=>f.functionKey===fn.key && f.custom);
+    const customRows = customFms.map(f=>`
+      <div>
+        <div class="option-card" style="margin-bottom:4px;">
+          <div class="option-text" style="flex:1"><b>${escapeHtml(f.label)} <span class="tag">custom</span></b></div>
+          <button class="row-remove" data-remove-fm="${f.id}" type="button">Remove</button>
+        </div>
+        <div class="fm-reasoning">
+          <textarea placeholder="Reasoning / practical scenario (optional)" data-reasoning-for="${f.id}">${escapeHtml(f.reasoning)}</textarea>
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="fm-group">
+        <h3>${escapeHtml(fn.label)}</h3>
+        ${libRows}${customRows}
+        <div class="inline-add" style="margin-top:10px;">
+          <input type="text" placeholder="Add a custom failure mode" data-custom-fm-input="${fn.key}">
+          <button class="btn secondary small" data-add-custom-fm="${fn.key}" data-fnlabel="${escapeHtml(fn.label)}" type="button">Add</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <p class="eyebrow">Step 2</p>
+    <h2 class="step-title">Identify failure modes</h2>
+    <p class="step-lede">For each function, select the ways the hardware could fail to meet MASH evaluation
+      criteria or perform its intended function. Add a reasoning note where you can — it carries through to
+      the final documentation table.</p>
+
+    ${groups}
+
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-back-functions">← Back</button>
+      <button class="btn" id="btn-to-existing-decision" ${state.failureModes.length?'':'disabled'}>Continue</button>
+    </div>
+  `;
+}
+
+/* ---------- Step: existing matrix decision ---------- */
+function renderExistingDecision(){
+  return `
+    <p class="eyebrow">Step 3</p>
+    <h2 class="step-title">Does MASH already recommend a test matrix?</h2>
+    <p class="step-lede">Check the applicable MASH hardware category. If a matrix already exists, you'll screen
+      its tests against your functions and failure modes before designing anything new — this avoids redundant
+      testing and keeps the matrix minimal.</p>
+
+    <div class="yesno">
+      <button id="existing-yes" class="${state.hasExistingMatrix===true?'chosen':''}" type="button">
+        Yes — a MASH matrix exists for this hardware
+      </button>
+      <button id="existing-no" class="${state.hasExistingMatrix===false?'chosen':''}" type="button">
+        No — no applicable matrix exists
+      </button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-back-failuremodes">← Back</button>
+    </div>
+  `;
+}
+
+/* ---------- Step: existing test loop ---------- */
+function renderExistingLoop(){
+  const rows = state.existingTests.map(t=>`
+    <tr class="${t.status==='Removed'?'removed':''}">
+      <td class="mono">${escapeHtml(t.label)}</td>
+      <td>${escapeHtml(t.vehicle)}</td>
+      <td>${escapeHtml(t.angle)}°</td>
+      <td>${escapeHtml(t.point)}</td>
+      <td>${escapeHtml(t.functionLabel)}</td>
+      <td><span class="status-pill ${t.status.toLowerCase()}">${t.status}</span></td>
+      <td>${t.coveredIds.length ? t.coveredIds.map(id=>escapeHtml(fmById(id)?.label||'')).join(', ') : '—'}</td>
+      <td><button class="row-remove" data-remove-test="${t.id}" type="button">Remove</button></td>
+    </tr>
+  `).join('');
+
+  const fnOptions = state.selectedFunctions.map(f=>`<option value="${f.key}">${escapeHtml(f.label)}</option>`).join('');
+  const performsKnown = document.getElementById('et-performs') ? document.getElementById('et-performs').value : '';
+
+  return `
+    <p class="eyebrow">Step 3a</p>
+    <h2 class="step-title">Screen the existing MASH tests</h2>
+    <p class="step-lede">List every test in the existing MASH matrix, one at a time. For each, note the function
+      it's associated with. If the hardware doesn't perform that function, the test is removed; if it does,
+      keep it and record which of your failure modes it actually evaluates.</p>
+
+    <div class="panel">
+      <h4>Add an existing test</h4>
+      <div class="field-block">
+        <label class="field-label">Test number / name</label>
+        <input type="text" id="et-label" placeholder="e.g. Test 41">
+      </div>
+      <div class="field-block" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+        <div>
+          <label class="field-label">Vehicle</label>
+          <select id="et-vehicle">${VEHICLES.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="field-label">Impact angle (°)</label>
+          <input type="number" id="et-angle" placeholder="90">
+        </div>
+        <div>
+          <label class="field-label">Impact point</label>
+          <select id="et-point">${IMPACT_POINTS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="field-block">
+        <label class="field-label">Associated function</label>
+        <select id="et-function">${fnOptions}</select>
+      </div>
+      <div class="field-block">
+        <label class="field-label">Does the hardware perform this function?</label>
+        <div class="yesno">
+          <button type="button" id="et-performs-yes" class="et-performs-btn" data-val="yes">Yes — retain &amp; map failure modes</button>
+          <button type="button" id="et-performs-no" class="et-performs-btn" data-val="no">No — remove this test</button>
+        </div>
+      </div>
+      <div id="et-coverage-area"></div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn secondary" id="btn-add-existing-test" type="button">Add existing test</button>
+      </div>
+    </div>
+
+    ${state.existingTests.length ? `
+    <table class="data-table">
+      <thead><tr><th>Test</th><th>Vehicle</th><th>Angle</th><th>Point</th><th>Function</th><th>Status</th><th>Failure modes covered</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>` : `<p class="empty-note">No existing tests added yet.</p>`}
+
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-back-existing-decision">← Back</button>
+      <button class="btn" id="btn-finish-existing-loop">Done reviewing existing tests →</button>
+    </div>
+  `;
+}
+
+/* ---------- Step: design loop (new tests) ---------- */
+function renderDesignLoop(){
+  if(state.uncovered.length===0){
+    return `
+      <p class="eyebrow">Step 4</p>
+      <h2 class="step-title">All failure modes are covered</h2>
+      <p class="step-lede">Every identified failure mode is already addressed by the existing matrix. No new
+        tests are needed — the existing matrix can be adopted directly.</p>
+      <div class="btn-row">
+        <button class="btn ghost" id="btn-design-back">← Back</button>
+        <button class="btn" id="btn-to-results">View finalized matrix →</button>
+      </div>
+    `;
+  }
+
+  if(state.loopIndex >= state.uncovered.length){
+    return `
+      <p class="eyebrow">Step 4</p>
+      <h2 class="step-title">Test design complete</h2>
+      <p class="step-lede">Every failure mode now has a test assigned. Review the finalized matrix next.</p>
+      <div class="btn-row">
+        <button class="btn ghost" id="btn-design-back">← Back</button>
+        <button class="btn" id="btn-to-results">View finalized matrix →</button>
+      </div>
+    `;
+  }
+
+  const fmId = state.uncovered[state.loopIndex];
+  const fm = fmById(fmId);
+  const matchOptions = allTestsForMatching().map(t=>`<option value="${escapeHtml(t.label)}">${escapeHtml(t.label)} — ${escapeHtml(t.vehicle)}, ${escapeHtml(t.angle)}°, ${escapeHtml(t.point)}</option>`).join('');
+
+  return `
+    <p class="eyebrow">Step 4</p>
+    <h2 class="step-title">Design a test</h2>
+    <p class="loop-progress">Failure mode ${state.loopIndex+1} of ${state.uncovered.length}</p>
+    <p class="step-lede">Select the critical vehicle and critical impact conditions needed to evaluate this
+      failure mode. If the conditions match a test you've already defined, this tool will consolidate them
+      automatically instead of creating a duplicate.</p>
+
+    <div class="panel">
+      <h4>${escapeHtml(fm.label)}</h4>
+      <p class="meta">${escapeHtml(fm.functionLabel)} · ${escapeHtml(fm.category)}${fm.reasoning ? ' — '+escapeHtml(fm.reasoning) : ''}</p>
+
+      <div class="field-block" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+        <div>
+          <label class="field-label">Critical vehicle</label>
+          <select id="dl-vehicle">${VEHICLES.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="field-label">Impact angle (°)</label>
+          <input type="number" id="dl-angle" placeholder="90">
+        </div>
+        <div>
+          <label class="field-label">Impact point</label>
+          <select id="dl-point">${IMPACT_POINTS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+        </div>
+      </div>
+
+      <div class="field-block">
+        <label class="field-label">Or manually consolidate into an existing test</label>
+        <select id="dl-manual-match">
+          <option value="">— New test —</option>
+          ${matchOptions}
+        </select>
+      </div>
+
+      <div class="field-block">
+        <label class="field-label">How does this test evaluate the failure mode? (optional)</label>
+        <textarea id="dl-summary" placeholder="e.g. Midspan head-on impact with 2270P maximizes bending demand in the main elements."></textarea>
+      </div>
+
+      <div id="dl-match-note"></div>
+
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn ghost" id="btn-design-back">← Back</button>
+        <button class="btn" id="btn-save-test">Save &amp; continue</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- Step: results ---------- */
+function renderResults(){
+  const finalTests = state.existingTests.filter(t=>t.status==='Retained')
+    .map(t=>({label:t.label, vehicle:t.vehicle, angle:t.angle, point:t.point}))
+    .concat(state.newTests.map(t=>({label:'Test '+t.letter, vehicle:t.vehicle, angle:t.angle, point:t.point})));
+
+  const finalMatrixRows = finalTests.map(t=>`
+    <tr><td class="mono">${escapeHtml(t.label)}</td><td>${escapeHtml(t.vehicle)}</td><td>${escapeHtml(t.angle)}°</td><td>${escapeHtml(t.point)}</td></tr>
+  `).join('');
+
+  const docRows = state.failureModes.map(f=>{
+    const existingLabel = state.existingTests.find(t=>t.status==='Retained' && t.coveredIds.includes(f.id));
+    const newLabel = state.newTests.find(t=>t.coveredIds.includes(f.id));
+    return `
+    <tr>
+      <td>${escapeHtml(f.functionLabel)}</td>
+      <td>${escapeHtml(f.label)}</td>
+      <td>${escapeHtml(f.reasoning)||'—'}</td>
+      <td class="mono">${existingLabel ? escapeHtml(existingLabel.label) : '—'}</td>
+      <td class="mono">${newLabel ? 'Test '+newLabel.letter : '—'}</td>
+      <td>${escapeHtml(f.summary)||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const removedRows = state.existingTests.filter(t=>t.status==='Removed').map(t=>`
+    <tr><td class="mono">${escapeHtml(t.label)}</td><td>${escapeHtml(t.vehicle)}</td><td>${escapeHtml(t.angle)}°</td><td>${escapeHtml(t.point)}</td><td>${escapeHtml(t.functionLabel)}</td></tr>
+  `).join('');
+
+  return `
+    <p class="eyebrow">Finalized</p>
+    <h2 class="step-title">${escapeHtml(state.rshName || 'MASH test matrix')}</h2>
+    <p class="step-lede">${finalTests.length} test${finalTests.length===1?'':'s'} evaluate
+      ${state.failureModes.length} identified failure mode${state.failureModes.length===1?'':'s'}
+      across ${state.selectedFunctions.length} function${state.selectedFunctions.length===1?'':'s'}.</p>
+
+    <div class="final-actions">
+      <button class="btn secondary" id="btn-print">Print / save as PDF</button>
+      <button class="btn secondary" id="btn-csv-matrix">Download matrix (CSV)</button>
+      <button class="btn secondary" id="btn-csv-doc">Download documentation table (CSV)</button>
+    </div>
+
+    <div class="panel">
+      <h4>Finalized test matrix</h4>
+      <div class="final-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Test No.</th><th>Vehicle</th><th>Impact angle</th><th>Impact point</th></tr></thead>
+          <tbody>${finalMatrixRows || '<tr><td colspan="4" class="empty-note">No tests</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h4>Documentation table</h4>
+      <div class="final-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Function</th><th>Failure mode</th><th>Reasoning</th><th>Existing test</th><th>New test</th><th>How test evaluates failure mode</th></tr></thead>
+          <tbody>${docRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    ${removedRows ? `
+    <div class="panel">
+      <h4>Existing tests removed (not applicable)</h4>
+      <div class="final-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Test No.</th><th>Vehicle</th><th>Angle</th><th>Point</th><th>Associated function</th></tr></thead>
+          <tbody>${removedRows}</tbody>
+        </table>
+      </div>
+    </div>` : ''}
+
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-results-back">← Back</button>
+      <button class="btn ghost" id="btn-restart">Start a new matrix</button>
+    </div>
+  `;
+}
+
+/* ============================================================
+   EVENT HANDLERS
+   ============================================================ */
+let pendingPerforms = null; // 'yes' | 'no' — tracked for existing-test form
+
+function attachHandlers(){
+  // WELCOME
+  const startBtn = document.getElementById('btn-start');
+  if(startBtn) startBtn.addEventListener('click', ()=>{
+    state.rshName = document.getElementById('rsh-name').value.trim();
+    goStep('functions');
+  });
+
+  // FUNCTIONS
+  document.querySelectorAll('.fn-check').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+      const key = e.target.dataset.fnkey;
+      const meta = FUNCTIONS.find(f=>f.key===key);
+      if(e.target.checked){
+        state.selectedFunctions.push({key, label:meta.label, custom:false});
+      } else {
+        state.selectedFunctions = state.selectedFunctions.filter(f=>f.key!==key);
+        state.failureModes = state.failureModes.filter(f=>f.functionKey!==key);
+      }
+      renderAll();
+    });
+  });
+  const addFnBtn = document.getElementById('add-custom-fn');
+  if(addFnBtn) addFnBtn.addEventListener('click', ()=>{
+    const input = document.getElementById('custom-fn-name');
+    const name = input.value.trim();
+    if(!name) return;
+    const key = 'custom_'+uid('');
+    state.selectedFunctions.push({key, label:name, custom:true});
+    renderAll();
+  });
+  document.querySelectorAll('[data-remove-fn]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const key = e.target.dataset.removeFn;
+      state.selectedFunctions = state.selectedFunctions.filter(f=>f.key!==key);
+      state.failureModes = state.failureModes.filter(f=>f.functionKey!==key);
+      renderAll();
+    });
+  });
+  const backWelcome = document.getElementById('btn-back-welcome');
+  if(backWelcome) backWelcome.addEventListener('click', ()=>goStep('welcome'));
+  const toFailureModes = document.getElementById('btn-to-failuremodes');
+  if(toFailureModes) toFailureModes.addEventListener('click', ()=>goStep('failuremodes'));
+
+  // FAILURE MODES
+  document.querySelectorAll('.fm-check').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+      const libId = e.target.dataset.libid;
+      if(e.target.checked){
+        state.failureModes.push({
+          id: uid('fm'), libId,
+          functionKey: e.target.dataset.fnkey,
+          functionLabel: e.target.dataset.fnlabel,
+          label: e.target.dataset.label,
+          category: e.target.dataset.category,
+          reasoning:'', custom:false, covered:false, coveredBy:null, summary:''
+        });
+      } else {
+        state.failureModes = state.failureModes.filter(f=>f.libId!==libId);
+      }
+      renderAll();
+    });
+  });
+  document.querySelectorAll('[data-reasoning-for]').forEach(ta=>{
+    ta.addEventListener('input', e=>{
+      const f = fmById(e.target.dataset.reasoningFor);
+      if(f) f.reasoning = e.target.value;
+    });
+    ta.addEventListener('blur', renderLedger);
+  });
+  document.querySelectorAll('[data-add-custom-fm]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const fnkey = e.target.dataset.addCustomFm;
+      const fnlabel = e.target.dataset.fnlabel;
+      const input = document.querySelector(`[data-custom-fm-input="${fnkey}"]`);
+      const val = input.value.trim();
+      if(!val) return;
+      state.failureModes.push({
+        id: uid('fm'), libId:null, functionKey:fnkey, functionLabel:fnlabel,
+        label:val, category:'Custom', reasoning:'', custom:true, covered:false, coveredBy:null, summary:''
+      });
+      renderAll();
+    });
+  });
+  document.querySelectorAll('[data-remove-fm]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      state.failureModes = state.failureModes.filter(f=>f.id!==e.target.dataset.removeFm);
+      renderAll();
+    });
+  });
+  const backFunctions = document.getElementById('btn-back-functions');
+  if(backFunctions) backFunctions.addEventListener('click', ()=>goStep('functions'));
+  const toExistingDecision = document.getElementById('btn-to-existing-decision');
+  if(toExistingDecision) toExistingDecision.addEventListener('click', ()=>goStep('existing-decision'));
+
+  // EXISTING DECISION
+  const eYes = document.getElementById('existing-yes');
+  const eNo = document.getElementById('existing-no');
+  if(eYes) eYes.addEventListener('click', ()=>{
+    state.hasExistingMatrix = true;
+    goStep('existing-loop');
+  });
+  if(eNo) eNo.addEventListener('click', ()=>{
+    state.hasExistingMatrix = false;
+    computeUncovered();
+    goStep('design-loop');
+  });
+  const backFailureModes = document.getElementById('btn-back-failuremodes');
+  if(backFailureModes) backFailureModes.addEventListener('click', ()=>goStep('failuremodes'));
+
+  // EXISTING LOOP
+  document.querySelectorAll('.et-performs-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      pendingPerforms = e.target.dataset.val;
+      document.querySelectorAll('.et-performs-btn').forEach(b=>b.classList.remove('chosen'));
+      e.target.classList.add('chosen');
+      renderExistingCoverageArea();
+    });
+  });
+  const addExistingBtn = document.getElementById('btn-add-existing-test');
+  if(addExistingBtn) addExistingBtn.addEventListener('click', ()=>{
+    const label = document.getElementById('et-label').value.trim() || ('Test '+(state.existingTests.length+1));
+    const vehicle = document.getElementById('et-vehicle').value;
+    const angle = document.getElementById('et-angle').value.trim();
+    const point = document.getElementById('et-point').value;
+    const fnKey = document.getElementById('et-function').value;
+    const fnMeta = state.selectedFunctions.find(f=>f.key===fnKey);
+    if(!fnMeta || pendingPerforms===null){
+      alert('Please select the associated function and whether the hardware performs it.');
+      return;
+    }
+    const coveredCheckboxes = document.querySelectorAll('.et-fm-cover:checked');
+    const coveredIds = Array.from(coveredCheckboxes).map(cb=>cb.value);
+
+    const test = {
+      id: uid('et'), label, vehicle, angle, point,
+      functionKey: fnKey, functionLabel: fnMeta.label,
+      performs: pendingPerforms==='yes',
+      status: pendingPerforms==='yes' ? 'Retained' : 'Removed',
+      coveredIds: pendingPerforms==='yes' ? coveredIds : []
+    };
+    state.existingTests.push(test);
+    coveredIds.forEach(id=>{
+      const f = fmById(id);
+      if(f){ f.covered = true; f.coveredBy = label; }
+    });
+    pendingPerforms = null;
+    renderAll();
+  });
+  document.querySelectorAll('[data-remove-test]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const id = e.target.dataset.removeTest;
+      const test = state.existingTests.find(t=>t.id===id);
+      if(test){
+        test.coveredIds.forEach(fid=>{
+          const f = fmById(fid);
+          if(f){ f.covered=false; f.coveredBy=null; }
+        });
+      }
+      state.existingTests = state.existingTests.filter(t=>t.id!==id);
+      renderAll();
+    });
+  });
+  const backExistingDecision = document.getElementById('btn-back-existing-decision');
+  if(backExistingDecision) backExistingDecision.addEventListener('click', ()=>goStep('existing-decision'));
+  const finishExistingLoop = document.getElementById('btn-finish-existing-loop');
+  if(finishExistingLoop) finishExistingLoop.addEventListener('click', ()=>{
+    computeUncovered();
+    goStep('design-loop');
+  });
+
+  // DESIGN LOOP
+  const saveTestBtn = document.getElementById('btn-save-test');
+  if(saveTestBtn) saveTestBtn.addEventListener('click', ()=>{
+    const fmId = state.uncovered[state.loopIndex];
+    const fm = fmById(fmId);
+    const manualMatch = document.getElementById('dl-manual-match').value;
+    const summary = document.getElementById('dl-summary').value.trim();
+    fm.summary = summary;
+
+    let matchedLabel = manualMatch || null;
+
+    if(!matchedLabel){
+      // no manual selection — fall back to the typed conditions, auto-detecting a match
+      const vehicle = document.getElementById('dl-vehicle').value;
+      const angle = document.getElementById('dl-angle').value.trim();
+      const point = document.getElementById('dl-point').value;
+
+      if(!angle){
+        alert('Enter an impact angle, or pick an existing test to consolidate into.');
+        return;
+      }
+
+      const m = findMatchingTest(vehicle, angle, point);
+      if(m){
+        matchedLabel = m.label;
+      } else {
+        const letter = nextLetter();
+        state.newTests.push({letter, vehicle, angle, point, coveredIds:[fm.id]});
+        fm.covered = true; fm.coveredBy = 'Test '+letter;
+      }
+    }
+
+    if(matchedLabel){
+      // align this failure mode with the selected/matched test directly — no separate conditions needed
+      fm.covered = true; fm.coveredBy = matchedLabel;
+      const existingTest = state.existingTests.find(t=>t.label===matchedLabel);
+      const newTest = state.newTests.find(t=>('Test '+t.letter)===matchedLabel);
+      if(existingTest && !existingTest.coveredIds.includes(fm.id)) existingTest.coveredIds.push(fm.id);
+      if(newTest && !newTest.coveredIds.includes(fm.id)) newTest.coveredIds.push(fm.id);
+    }
+
+    state.loopIndex += 1;
+    renderAll();
+  });
+  const designBackBtn = document.getElementById('btn-design-back');
+  if(designBackBtn) designBackBtn.addEventListener('click', handleDesignLoopBack);
+
+  // live match preview on design loop inputs
+  ['dl-vehicle','dl-angle','dl-point'].forEach(id=>{
+    const elx = document.getElementById(id);
+    if(elx) elx.addEventListener('input', updateMatchNote);
+    if(elx) elx.addEventListener('change', updateMatchNote);
+  });
+  const manualMatchSelect = document.getElementById('dl-manual-match');
+  if(manualMatchSelect) manualMatchSelect.addEventListener('change', e=>{
+    const picked = !!e.target.value;
+    ['dl-vehicle','dl-angle','dl-point'].forEach(id=>{
+      const elx = document.getElementById(id);
+      if(elx) elx.disabled = picked;
+    });
+    updateMatchNote();
+  });
+
+  const toResults = document.getElementById('btn-to-results');
+  if(toResults) toResults.addEventListener('click', ()=>goStep('results'));
+
+  // RESULTS
+  const printBtn = document.getElementById('btn-print');
+  if(printBtn) printBtn.addEventListener('click', ()=>window.print());
+  const csvMatrixBtn = document.getElementById('btn-csv-matrix');
+  if(csvMatrixBtn) csvMatrixBtn.addEventListener('click', downloadMatrixCsv);
+  const csvDocBtn = document.getElementById('btn-csv-doc');
+  if(csvDocBtn) csvDocBtn.addEventListener('click', downloadDocCsv);
+  const restartBtn = document.getElementById('btn-restart');
+  if(restartBtn) restartBtn.addEventListener('click', doReset);
+  const resultsBackBtn = document.getElementById('btn-results-back');
+  if(resultsBackBtn) resultsBackBtn.addEventListener('click', ()=>goStep('design-loop'));
+
+  updateMatchNote();
+}
+
+function updateMatchNote(){
+  const noteEl = document.getElementById('dl-match-note');
+  if(!noteEl) return;
+
+  const manualMatch = document.getElementById('dl-manual-match')?.value;
+  if(manualMatch){
+    const chosen = allTestsForMatching().find(t=>t.label===manualMatch);
+    noteEl.innerHTML = chosen
+      ? `<div class="match-note">This failure mode will be aligned with <b>${escapeHtml(chosen.label)}</b> — ${escapeHtml(chosen.vehicle)}, ${escapeHtml(chosen.angle)}°, ${escapeHtml(chosen.point)}. Click "Save &amp; continue" to proceed.</div>`
+      : '';
+    return;
+  }
+
+  const vehicle = document.getElementById('dl-vehicle')?.value;
+  const angle = document.getElementById('dl-angle')?.value.trim();
+  const point = document.getElementById('dl-point')?.value;
+  if(!angle){ noteEl.innerHTML=''; return; }
+  const m = findMatchingTest(vehicle, angle, point);
+  noteEl.innerHTML = m
+    ? `<div class="match-note">These conditions match <b>${escapeHtml(m.label)}</b> — this failure mode will be consolidated into it rather than creating a new test.</div>`
+    : '';
+}
+
+function renderExistingCoverageArea(){
+  const area = document.getElementById('et-coverage-area');
+  if(!area) return;
+  if(pendingPerforms!=='yes'){ area.innerHTML=''; return; }
+  const fnKey = document.getElementById('et-function').value;
+  const relevant = state.failureModes.filter(f=>f.functionKey===fnKey);
+  if(!relevant.length){
+    area.innerHTML = `<p class="hint">No failure modes identified yet for this function.</p>`;
+    return;
+  }
+  area.innerHTML = `
+    <div class="field-block">
+      <label class="field-label">Which failure mode(s) does this test evaluate?</label>
+      ${relevant.map(f=>`
+        <label class="option-card" style="padding:8px 12px;">
+          <input type="checkbox" class="et-fm-cover" value="${f.id}">
+          <span class="option-text"><b>${escapeHtml(f.label)}</b></span>
+        </label>
+      `).join('')}
+    </div>`;
+}
+// re-render coverage checkboxes whenever the associated function changes
+document.addEventListener('change', e=>{
+  if(e.target && e.target.id==='et-function') renderExistingCoverageArea();
+});
+
+/* ============================================================
+   CSV EXPORT
+   ============================================================ */
+function csvEscape(v){
+  const s = (v===undefined||v===null) ? '' : String(v);
+  if(/[",\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function downloadCsv(filename, rows){
+  const content = rows.map(r=>r.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob([content], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function downloadMatrixCsv(){
+  const rows = [['Test No.','Vehicle','Impact Angle (deg)','Impact Point']];
+  state.existingTests.filter(t=>t.status==='Retained').forEach(t=>rows.push([t.label,t.vehicle,t.angle,t.point]));
+  state.newTests.forEach(t=>rows.push(['Test '+t.letter,t.vehicle,t.angle,t.point]));
+  downloadCsv((state.rshName||'mash-matrix').replace(/\s+/g,'-').toLowerCase()+'-matrix.csv', rows);
+}
+function downloadDocCsv(){
+  const rows = [['Applicable Function','Failure Mode','Reasoning / Practical Scenario','Existing MASH Test No.','New Test No.','Summary']];
+  state.failureModes.forEach(f=>{
+    const existingLabel = state.existingTests.find(t=>t.status==='Retained' && t.coveredIds.includes(f.id));
+    const newLabel = state.newTests.find(t=>t.coveredIds.includes(f.id));
+    rows.push([f.functionLabel, f.label, f.reasoning, existingLabel?existingLabel.label:'', newLabel?('Test '+newLabel.letter):'', f.summary]);
+  });
+  downloadCsv((state.rshName||'mash-matrix').replace(/\s+/g,'-').toLowerCase()+'-documentation.csv', rows);
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+function doReset(){
+  if(state.step==='welcome' || confirm('Start a new matrix? This clears everything currently entered.')){
+    state = freshState();
+    renderAll();
+  }
+}
+document.getElementById('reset-btn').addEventListener('click', doReset);
+
+/* ============================================================
+   ROOT RENDER
+   ============================================================ */
+function renderAll(){
+  renderStepper();
+  renderMain();
+  renderLedger();
+}
+renderAll();
+</script>
+</body>
+</html>
